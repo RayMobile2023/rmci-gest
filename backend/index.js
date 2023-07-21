@@ -1,5 +1,4 @@
 import { db } from "./config/Database.js";
-import session from "express-session";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -9,10 +8,9 @@ import route from "./router/route.js"
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
-import session from 'cookie-session'
+import session from 'cookie-session';
 import RedisStore from "connect-redis";
 import { createClient } from "redis";
-import { createProxyMiddleware } from "http-proxy-middleware";
 
 
 const app = express();
@@ -28,6 +26,14 @@ const __dirname = path.dirname(__filename);
 
 app.use(express.static(path.join(__dirname)))
 
+const redisClient = createClient();
+redisClient.connect().catch(console.error);
+
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "prefix:",
+});
+
 app.use(bodyParser.json());
 app.use(
   bodyParser.urlencoded({
@@ -39,25 +45,10 @@ app.use(cookieParser()); // any string ex: 'keyboard cat'
 app.use(
   cors({
     credentials: true,
-    origin: true,
+    origin: "https://raymobileci.com",
   })
 );
 
-app.use(
-  "/api",
-  createProxyMiddleware({
-    target: "https://raymobileci.com",
-    changeOrigin: true,
-  })
-);
-
-const redisClient = createClient();
-redisClient.connect().catch(console.error);
-
-const redisStore = new RedisStore({
-  client: redisClient,
-  prefix: "prefix:",
-});
 
 //-momery unleaked---------
 app.set('trust proxy', 1);
@@ -82,22 +73,6 @@ if(!req.session){
 next() //otherwise continue
 });
 
-app.use(
-  session({
-    name: "session_id",
-    saveUninitialized: true,
-    resave: false,
-    secret: SESSION_SECRET, // Secret key,
-    cookie: {
-      path: "/",
-      httpOnly: true,
-      maxAge: 1 * 60 * 1000,
-      sameSite: "none",
-      secure: true,
-    },
-  })
-);
-
 // app middleware
 app.use(
   express.urlencoded({
@@ -107,21 +82,17 @@ app.use(
 
 app.use(express.json());
 
-app.use(
-  cors({
-    origin: [process.env.ORIGIN_FRONTEND_SERVER],
-    methods: ["GET,OPTIONS,PATCH,DELETE,POST,PUT,FETCH"],
-    allowedHeaders:
-      "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, application/pdf",
-    //allowedHeaders: ["Access-Control-Allow-Origin", "*"],
-    allowedHeaders: "Access-Control-Allow-Methods",
-    allowedHeaders: ["Access-Control-Allow-Headers", ""],
-    //allowedHeaders: ["Access-Control-Allow-Credentials", true],
-    credentials: true, // enable set cookie
-    optionsSuccessStatus: 200,
-    credentials: true,
-  })
-);
+app.use(cors({
+  origin: [process.env.ORIGIN_FRONTEND_SERVER],
+  methods: ['Access-Control-Allow-Methods','GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: "Origin, X-Requested-With, x-access-token, role, Content, Accept, Content-Type, Authorization",
+  allowedHeaders: "Access-Control-Allow-Methods",
+  allowedHeaders: ["Access-Control-Allow-Headers","*"],
+  allowedHeaders: ['Access-Control-Allow-Credentials', true],
+  credentials: true, // enable set cookie
+  optionsSuccessStatus: 200,
+  credentials: true,
+}));
 
 app.post("/", function (req, res, next) {
   // Handle the post for this route
