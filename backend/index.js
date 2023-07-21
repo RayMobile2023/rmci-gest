@@ -9,6 +9,10 @@ import route from "./router/route.js"
 import multer from "multer";
 import path from "path";
 import { fileURLToPath } from "url";
+import session from 'cookie-session'
+import RedisStore from "connect-redis";
+import { createClient } from "redis";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 
 const app = express();
@@ -38,6 +42,45 @@ app.use(
     origin: true,
   })
 );
+
+app.use(
+  "/api",
+  createProxyMiddleware({
+    target: "http://localhost:8080",
+    changeOrigin: true,
+  })
+);
+
+const redisClient = createClient();
+redisClient.connect().catch(console.error);
+
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: "prefix:",
+});
+
+//-momery unleaked---------
+app.set('trust proxy', 1);
+
+app.use(
+  session({
+    cookie: {
+      secure: true,
+      maxAge: 60000,
+    },
+    store: redisStore,
+    secret: SESSION_SECRET,
+    saveUninitialized: false,
+    resave: false,
+  })
+);
+
+app.use(function(req,res,next){
+if(!req.session){
+    return next(new Error('Oh no')) //handle error
+}
+next() //otherwise continue
+});
 
 app.use(
   session({

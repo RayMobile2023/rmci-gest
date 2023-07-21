@@ -2,8 +2,6 @@ import fs from "fs";
 import { db } from "../config/Database.js";
 import moment from "moment";
 
-
-
 export const addVersement = async (req, res) => {
   const status = "Effectue";
   let obsArret;
@@ -255,11 +253,13 @@ export const addVersement = async (req, res) => {
 export const Manquement = async (req, res) => {
   //let allManquery = "SELECT * FROM `chauffeur` INNER JOIN `calendar_event` ON `chauffeur`.`numero_permis`=`calendar_event`.`event_driver` INNER JOIN `manquement` ON  `manquement`.`eventID`=`calendar_event`.`event_id`";
   let allManquery =
-    "SELECT *, SUM(nbre_arret) AS totalArret, SUM(nbre_repos) AS totalRepos FROM  `manquement` INNER JOIN `chauffeur` ON `manquement`.`driver_id`=`chauffeur`.`numero_permis` WHERE (nbre_arret = 1) OR (nbre_repos = 1) OR (nbre_repos =1 AND nbre_arret = 1) GROUP BY `manquement`.`driver_id`";
+    "SELECT SUM(ma.nbre_arret) AS totalArret, SUM(ma.nbre_repos) AS totalRepos, ch.numero_permis, ch.nom, ch.prenom, ch.driverImage, ch.vehicule FROM chauffeur AS ch INNER JOIN  manquement AS ma ON ma.driver_id = ch.numero_permis WHERE ma.nbre_arret >= 1 OR ma.nbre_repos >= 1 OR (ma.nbre_repos >= 1 AND ma.nbre_arret >= 1) GROUP BY ch.numero_permis, ch.nom, ch.prenom";
+  //"SELECT *, SUM(nbre_arret) AS totalArret, SUM(nbre_repos) AS totalRepos FROM  `manquement` INNER JOIN `chauffeur` ON `manquement`.`driver_id`=`chauffeur`.`numero_permis` WHERE (nbre_arret = 1) OR (nbre_repos = 1) OR (nbre_repos =1 AND nbre_arret = 1) GROUP BY `manquement`.`driver_id`";
   //let allManquery = "SELECT *, SUM(nbre_arret + nbre_repos) AS totalManQ, SUM(nbre_arret) AS totalArret, SUM(nbre_repos) AS totalRepos FROM `manquement` INNER JOIN `chauffeur` ON `manquement`.`driver_id`=`chauffeur`.`numero_permis` GROUP BY `manquement`.`driver_id` HAVING totalArret  > 0 OR totalRepos > 0 AND totalManQ > 0";
   db.query(allManquery, (err, rows) => {
     if (!err) {
       res.send(rows);
+      //console.log(rows)
     } else {
       console.log(err);
     }
